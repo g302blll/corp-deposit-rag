@@ -13,7 +13,10 @@ const submitting = ref(false)
 const error = ref('')
 const idempotencyKey = ref('')
 watch(visible, value => { if (value && !idempotencyKey.value) idempotencyKey.value = createIdempotencyKey() })
-watch(() => props.plan?.planId, (current, previous) => {
+const operationIdentity = () => props.plan && props.customer
+  ? [props.customer.customerNo, props.plan.planId, props.plan.totalAmountInCents, ...props.plan.details.flatMap(detail => [detail.productId, detail.productTermId, detail.amountInCents, detail.interestRate])].join(':')
+  : ''
+watch(operationIdentity, (current, previous) => {
   if (current !== previous) idempotencyKey.value = visible.value ? createIdempotencyKey() : ''
 })
 

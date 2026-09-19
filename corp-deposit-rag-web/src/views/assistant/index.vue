@@ -9,6 +9,7 @@ import IntentionConfirmDialog from '@/components/assistant/IntentionConfirmDialo
 import { useCustomerStore } from '@/stores/customer'
 import { useConversationStore } from '@/stores/conversation'
 import type { DepositPlan, IntentionResult } from '@/types/assistant'
+import { answerGeneralConsultation } from '@/utils/generalConsultation'
 
 const customerStore = useCustomerStore(); const conversation = useConversationStore()
 const input = ref('800万存一年，优先收益，可以长期不用')
@@ -22,7 +23,7 @@ async function send() {
   if (!text || conversation.loading) return
   if (!customerStore.currentCustomer) {
     conversation.appendMessage({ id: messageId(), role: 'USER', type: 'TEXT', text, createdAt: new Date().toISOString() })
-    conversation.appendMessage({ id: messageId(), role: 'ASSISTANT', type: 'TEXT', text: '可以进行通用产品咨询；如需查询客户准入、执行利率或生成个性化方案，请先在左侧选择客户。当前通用咨询使用本地 Mock，不调用付费模型。', createdAt: new Date().toISOString() })
+    conversation.appendMessage({ id: messageId(), role: 'ASSISTANT', type: 'TEXT', text: answerGeneralConsultation(text), createdAt: new Date().toISOString() })
     input.value = ''
     return
   }

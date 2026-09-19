@@ -28,8 +28,20 @@ foreach ($record in $records) {
         $remainingRecords += $record
         continue
     }
-    Stop-Process -Id $record.pid -Force -ErrorAction SilentlyContinue
-    if (-not $Quiet) { Write-Host "Stopped $($record.name) (PID $($record.pid))." }
+    try {
+        Stop-Process -Id $record.pid -Force -ErrorAction Stop
+        $deadline = (Get-Date).AddSeconds(5)
+        while ($null -ne (Get-Process -Id $record.pid -ErrorAction SilentlyContinue) -and (Get-Date) -lt $deadline) {
+            Start-Sleep -Milliseconds 100
+        }
+        if ($null -ne (Get-Process -Id $record.pid -ErrorAction SilentlyContinue)) {
+            throw "PID $($record.pid) is still running."
+        }
+        if (-not $Quiet) { Write-Host "Stopped $($record.name) (PID $($record.pid))." }
+    } catch {
+        Write-Warning "Failed to stop $($record.name) (PID $($record.pid)): $($_.Exception.Message)"
+        $remainingRecords += $record
+    }
 }
 
 if ($remainingRecords.Count -gt 0) {

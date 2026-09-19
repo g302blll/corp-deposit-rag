@@ -31,7 +31,9 @@ function Wait-TcpPort([string]$Name, [int]$Port, [int]$ProcessId, [int]$TimeoutS
         if ($null -eq (Get-Process -Id $ProcessId -ErrorAction SilentlyContinue)) {
             throw "$Name exited before becoming ready. Check .runtime\logs."
         }
-        if (Test-TcpPort '127.0.0.1' $Port 500) { Write-Host "  [OK] $Name :$Port" -ForegroundColor Green; return }
+        $listener = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue |
+            Where-Object { $_.OwningProcess -eq $ProcessId } | Select-Object -First 1
+        if ($null -ne $listener) { Write-Host "  [OK] $Name :$Port (PID $ProcessId)" -ForegroundColor Green; return }
         Start-Sleep -Milliseconds 700
     }
     throw "$Name did not become ready on port $Port within $TimeoutSeconds seconds."
@@ -51,7 +53,17 @@ function Resolve-JavaExecutable {
 }
 
 function Save-ProcessRecords($Records) {
-    @($Records) | ConvertTo-Json | Set-Content -LiteralPath $pidFile -Encoding UTF8
+    $temporaryPidFile = "$pidFile.tmp"
+    @($Records) | ConvertTo-Json | Set-Content -LiteralPath $temporaryPidFile -Encoding UTF8
+    Move-Item -LiteralPath $temporaryPidFile -Destination $pidFile -Force
+}
+
+function Stop-InMemoryProcesses($Records) {
+    $items = @($Records)
+    [array]::Reverse($items)
+    foreach ($record in $items) {
+        Stop-Process -Id $record.pid -Force -ErrorAction SilentlyContinue
+    }
 }
 
 function Invoke-Checked([string]$Title, [scriptblock]$Action) {
@@ -87,9 +99,6 @@ $services = @(
 )
 
 if (Test-Path -LiteralPath $pidFile) { & $stopScript -ProjectRoot $root -Quiet }
-foreach ($port in @($services.Port) + 5173) {
-    if (Test-TcpPort '127.0.0.1' $port) { throw "Port $port is already in use. Stop the occupying program before starting this project." }
-}
 New-Item -ItemType Directory -Path $logRoot -Force | Out-Null
 
 Push-Location $serverRoot
@@ -102,6 +111,11 @@ try {
     Invoke-Checked 'Run frontend tests' { & npm.cmd test }
     Invoke-Checked 'Build frontend' { & npm.cmd run build }
 } finally { Pop-Location }
+
+# Build steps can take time, so check immediately before launching as well.
+foreach ($port in @($services.Port) + 5173) {
+    if (Test-TcpPort '127.0.0.1' $port) { throw "Port $port is already in use. Stop the occupying program before starting this project." }
+}
 
 $processRecords = [System.Collections.Generic.List[object]]::new()
 try {
@@ -132,8 +146,10 @@ try {
     $response = Invoke-RestMethod -Method Post -Uri 'http://127.0.0.1:5173/api/v1/assistant/plans' -ContentType 'application/json' -Body $smokeJson
     if ($null -eq $response.plans) { throw 'End-to-end recommendation smoke test returned no plans field.' }
 } catch {
-    if (Test-Path -LiteralPath $pidFile) { & $stopScript -ProjectRoot $root -Quiet }
-    throw
+    $startupError = $_
+    Stop-InMemoryProcesses $processRecords
+    if (Test-Path -LiteralPath $pidFile) { Remove-Item -LiteralPath $pidFile -Force -ErrorAction SilentlyContinue }
+    throw $startupError
 }
 
 Write-Host "`nAll services are ready: http://127.0.0.1:5173" -ForegroundColor Green
