@@ -1,0 +1,27 @@
+{
+  "name": "corp-deposit-rag-web",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vue-tsc -b && vite build",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "axios": "1.20.0",
+    "element-plus": "2.11.4",
+    "pinia": "3.0.3",
+    "vue": "3.5.43",
+    "vue-router": "4.5.1"
+  },
+  "devDependencies": {
+    "@types/node": "22.15.3",
+    "@vitejs/plugin-vue": "6.0.9",
+    "@vue/tsconfig": "0.8.1",
+    "typescript": "5.9.2",
+    "vite": "8.3.0",
+    "vitest": "5.0.1",
+    "vue-tsc": "3.1.0"
+  }
+}
