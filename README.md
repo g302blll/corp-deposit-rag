@@ -1,6 +1,22 @@
 # 对公存款智能服务助手
 
-V1.1 MVP 使用 Java 17、Spring Boot、Spring Cloud Alibaba、MyBatis-Plus、MySQL 与 Nacos，默认通过 Mock 提取自然语言需求，不调用付费模型 API。
+V1.2 MVP 已包含 Vue 3 前端和 Java 微服务后端，默认通过 Mock 提取自然语言需求，不调用付费模型 API。
+
+## 目录结构
+
+```text
+corp-deposit-rag/
+├── corp-deposit-rag-web/       Vue 3 + TypeScript 前端
+├── corp-deposit-rag-server/    Maven 多模块 Java 后端
+├── start-all.bat               构建并启动全部服务、打开网页
+└── stop-all.bat                停止本项目启动的全部进程
+```
+
+## 一键启动
+
+确保 MySQL、Nacos 已启动后，直接双击根目录 `start-all.bat`。脚本会检查环境、运行后端测试并打包最新 JAR、测试和构建前端、启动全部服务、验证推荐接口，最后打开 `http://127.0.0.1:5173`。
+
+未设置 `MYSQL_PASSWORD` 时会在控制台安全询问，密码不会落盘。关闭服务请双击 `stop-all.bat`。演示账号：`zhangsan / 123456`。
 
 ## 模块与端口
 
@@ -24,6 +40,7 @@ $env:NACOS_SERVER_ADDR = '127.0.0.1:8848'
 ## 构建和启动
 
 ```powershell
+cd corp-deposit-rag-server
 .\mvnw.cmd clean package
 java -jar customer-service\target\customer-service-1.1.0-SNAPSHOT.jar
 java -jar deposit-product-service\target\deposit-product-service-1.1.0-SNAPSHOT.jar

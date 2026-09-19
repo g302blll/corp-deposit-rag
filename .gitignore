@@ -6,4 +6,7 @@ target/
 *.log
 .env
 application-local.yml
+.runtime/
+corp-deposit-rag-web/node_modules/
+corp-deposit-rag-web/dist/
 
