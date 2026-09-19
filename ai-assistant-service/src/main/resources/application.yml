@@ -1,0 +1,17 @@
+server:
+  port: 8084
+spring:
+  application:
+    name: ai-assistant-service
+  cloud:
+    nacos:
+      discovery:
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+        enabled: ${NACOS_ENABLED:true}
+assistant:
+  extractor: mock
+services:
+  customer-url: ${CUSTOMER_SERVICE_URL:http://127.0.0.1:8081}
+  product-url: ${PRODUCT_SERVICE_URL:http://127.0.0.1:8082}
+  business-url: ${BUSINESS_SERVICE_URL:http://127.0.0.1:8083}
+
