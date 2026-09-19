@@ -1,0 +1,9 @@
+.idea/
+.vscode/
+.worktrees/
+target/
+*.iml
+*.log
+.env
+application-local.yml
+
