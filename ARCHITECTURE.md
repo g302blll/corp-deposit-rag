@@ -987,5 +987,5 @@ corp-deposit-rag-server  Java 17 + Spring Boot Maven 多模块
 
 开发态由 Vite `5173` 提供页面并代理 `/api` 到 `ai-assistant-service:8084`。前端通过 API 适配层把后端单产品候选转换为支持 `details[]` 的组合方案模型；金额、利率与收益只展示后端确定性结果。
 
-一键启动流程为：依赖检查 → 后端测试与 JAR 打包 → 前端测试与构建 → 启动四个 Java 服务与 Vite → 代理接口冒烟测试 → 打开浏览器。运行 PID 与日志写入 Git 忽略的 `.runtime`，停止脚本只清理命令行属于当前仓库的 Java/Node 进程。
+一键启动流程为：依赖检查 → 后端测试与 JAR 打包 → 前端测试与构建 → 启动四个 Java 服务与 Vite → 代理接口冒烟测试 → 打开浏览器。运行 PID、精确命令标记与日志写入 Git 忽略的 `.runtime`，停止脚本只清理 PID 和命令标记同时匹配的登记进程。
 

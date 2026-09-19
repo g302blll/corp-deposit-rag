@@ -7,7 +7,7 @@ defineEmits<{ detail: [plan: DepositPlan]; select: [plan: DepositPlan] }>()
 </script>
 <template>
   <article class="deposit-plan-card">
-    <header><div><span>{{ plan.planType === 'YIELD' ? '收益优先' : '流动性优先' }}</span><h3>{{ plan.planName }}</h3></div><strong>{{ formatMoneyShort(plan.totalExpectedInterestInCents) }}<small>预计收益</small></strong></header>
+    <header><div><span>{{ plan.planType === 'YIELD' ? '收益优先' : plan.planType === 'LIQUIDITY' ? '流动性优先' : '均衡配置' }}</span><h3>{{ plan.planName }}</h3></div><strong>{{ formatMoneyShort(plan.totalExpectedInterestInCents) }}<small>预计收益</small></strong></header>
     <div class="plan-summary"><span>总金额 <b>{{ formatMoneyShort(plan.totalAmountInCents) }}</b></span><span>{{ plan.details.length }} 项产品组合</span></div>
     <div v-for="detail in plan.details" :key="detail.productTermId" class="plan-detail-row">
       <div><b>{{ detail.productName }}</b><small>{{ detail.productCode }} · {{ detail.termName }}</small></div>

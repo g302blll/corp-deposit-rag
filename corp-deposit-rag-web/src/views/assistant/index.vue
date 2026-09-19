@@ -21,19 +21,28 @@ async function send() {
   const text = input.value.trim()
   if (!text || conversation.loading) return
   if (!customerStore.currentCustomer) {
-    conversation.appendMessage({ id: messageId(), role: 'ASSISTANT', type: 'ERROR', text: '请先在左侧选择客户，再进行个性化产品推荐。', createdAt: new Date().toISOString() }); return
+    conversation.appendMessage({ id: messageId(), role: 'USER', type: 'TEXT', text, createdAt: new Date().toISOString() })
+    conversation.appendMessage({ id: messageId(), role: 'ASSISTANT', type: 'TEXT', text: '可以进行通用产品咨询；如需查询客户准入、执行利率或生成个性化方案，请先在左侧选择客户。当前通用咨询使用本地 Mock，不调用付费模型。', createdAt: new Date().toISOString() })
+    input.value = ''
+    return
   }
+  const requestCustomerNo = customerStore.currentCustomer.customerNo
+  const requestSessionVersion = conversation.sessionVersion
   conversation.appendMessage({ id: messageId(), role: 'USER', type: 'TEXT', text, createdAt: new Date().toISOString() })
   input.value = ''; lastRequirement.value = text; conversation.loading = true
   try {
-    const response = await getPlans({ customerNo: customerStore.currentCustomer.customerNo, message: text })
+    const response = await getPlans({ customerNo: requestCustomerNo, message: text })
+    if (conversation.sessionVersion !== requestSessionVersion || customerStore.currentCustomer?.customerNo !== requestCustomerNo) return
     customerStore.selectCustomer({ ...customerStore.currentCustomer, ...response.customer })
     conversation.appendMessage({ id: messageId(), role: 'ASSISTANT', type: 'TEXT', text: response.message, createdAt: new Date().toISOString() })
     if (response.plans.length) conversation.appendMessage({ id: messageId(), role: 'ASSISTANT', type: 'PLAN', plans: response.plans, createdAt: new Date().toISOString() })
     conversation.setPlans(response.plans)
   } catch (cause) {
+    if (conversation.sessionVersion !== requestSessionVersion) return
     conversation.appendMessage({ id: messageId(), role: 'ASSISTANT', type: 'ERROR', text: cause instanceof Error ? cause.message : '方案生成失败', createdAt: new Date().toISOString() })
-  } finally { conversation.loading = false }
+  } finally {
+    if (conversation.sessionVersion === requestSessionVersion) conversation.loading = false
+  }
 }
 function showDetail(plan: DepositPlan) { detailPlan.value = plan; detailVisible.value = true }
 function selectPlan(plan: DepositPlan) { selectedPlan.value = plan; confirmVisible.value = true }

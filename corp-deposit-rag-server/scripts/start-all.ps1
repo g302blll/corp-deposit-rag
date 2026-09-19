@@ -25,13 +25,33 @@ function Test-TcpPort([string]$HostName, [int]$Port, [int]$TimeoutMs = 1200) {
     } catch { return $false } finally { $client.Dispose() }
 }
 
-function Wait-TcpPort([string]$Name, [int]$Port, [int]$TimeoutSeconds = 75) {
+function Wait-TcpPort([string]$Name, [int]$Port, [int]$ProcessId, [int]$TimeoutSeconds = 75) {
     $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
     while ((Get-Date) -lt $deadline) {
+        if ($null -eq (Get-Process -Id $ProcessId -ErrorAction SilentlyContinue)) {
+            throw "$Name exited before becoming ready. Check .runtime\logs."
+        }
         if (Test-TcpPort '127.0.0.1' $Port 500) { Write-Host "  [OK] $Name :$Port" -ForegroundColor Green; return }
         Start-Sleep -Milliseconds 700
     }
     throw "$Name did not become ready on port $Port within $TimeoutSeconds seconds."
+}
+
+function Resolve-JavaExecutable {
+    if (-not [string]::IsNullOrWhiteSpace($env:JAVA_HOME)) {
+        $candidate = Join-Path $env:JAVA_HOME 'bin\java.exe'
+        if (Test-Path -LiteralPath $candidate) { return (Resolve-Path -LiteralPath $candidate).Path }
+    }
+    $settings = & java -XshowSettings:properties -version 2>&1
+    $homeLine = $settings | Select-String '^\s*java.home\s*=\s*(.+)$' | Select-Object -First 1
+    if ($null -eq $homeLine) { throw 'Unable to resolve the actual JDK java.exe path.' }
+    $candidate = Join-Path $homeLine.Matches[0].Groups[1].Value.Trim() 'bin\java.exe'
+    if (-not (Test-Path -LiteralPath $candidate)) { throw "Resolved java.exe does not exist: $candidate" }
+    return (Resolve-Path -LiteralPath $candidate).Path
+}
+
+function Save-ProcessRecords($Records) {
+    @($Records) | ConvertTo-Json | Set-Content -LiteralPath $pidFile -Encoding UTF8
 }
 
 function Invoke-Checked([string]$Title, [scriptblock]$Action) {
@@ -43,6 +63,7 @@ function Invoke-Checked([string]$Title, [scriptblock]$Action) {
 Assert-Command 'java'
 Assert-Command 'node'
 Assert-Command 'npm.cmd'
+$javaExecutable = Resolve-JavaExecutable
 
 foreach ($dependency in @(@{ Name = 'MySQL'; Port = 3306 }, @{ Name = 'Nacos'; Port = 8848 })) {
     if (-not (Test-TcpPort '127.0.0.1' $dependency.Port)) { throw "$($dependency.Name) is not reachable on 127.0.0.1:$($dependency.Port)." }
@@ -58,7 +79,17 @@ if ([string]::IsNullOrWhiteSpace($env:MYSQL_PASSWORD)) {
 }
 if ([string]::IsNullOrWhiteSpace($env:NACOS_SERVER_ADDR)) { $env:NACOS_SERVER_ADDR = '127.0.0.1:8848' }
 
-& $stopScript -ProjectRoot $root -Quiet
+$services = @(
+    @{ Name = 'customer-service'; Port = 8081 },
+    @{ Name = 'deposit-product-service'; Port = 8082 },
+    @{ Name = 'deposit-business-service'; Port = 8083 },
+    @{ Name = 'ai-assistant-service'; Port = 8084 }
+)
+
+if (Test-Path -LiteralPath $pidFile) { & $stopScript -ProjectRoot $root -Quiet }
+foreach ($port in @($services.Port) + 5173) {
+    if (Test-TcpPort '127.0.0.1' $port) { throw "Port $port is already in use. Stop the occupying program before starting this project." }
+}
 New-Item -ItemType Directory -Path $logRoot -Force | Out-Null
 
 Push-Location $serverRoot
@@ -72,12 +103,6 @@ try {
     Invoke-Checked 'Build frontend' { & npm.cmd run build }
 } finally { Pop-Location }
 
-$services = @(
-    @{ Name = 'customer-service'; Port = 8081 },
-    @{ Name = 'deposit-product-service'; Port = 8082 },
-    @{ Name = 'deposit-business-service'; Port = 8083 },
-    @{ Name = 'ai-assistant-service'; Port = 8084 }
-)
 $processRecords = [System.Collections.Generic.List[object]]::new()
 try {
     Write-Host "`n== Start services ==" -ForegroundColor Cyan
@@ -87,23 +112,27 @@ try {
         if ($null -eq $jar) { throw "JAR not found for $($service.Name)." }
         $stdout = Join-Path $logRoot "$($service.Name).out.log"
         $stderr = Join-Path $logRoot "$($service.Name).err.log"
-        $process = Start-Process -FilePath 'java.exe' -ArgumentList @('-jar', $jar.FullName) -WorkingDirectory $serverRoot -RedirectStandardOutput $stdout -RedirectStandardError $stderr -WindowStyle Hidden -PassThru
-        $processRecords.Add([pscustomobject]@{ name = $service.Name; pid = $process.Id })
+        $process = Start-Process -FilePath $javaExecutable -ArgumentList @('-jar', $jar.FullName) -WorkingDirectory $serverRoot -RedirectStandardOutput $stdout -RedirectStandardError $stderr -WindowStyle Hidden -PassThru
+        $processRecords.Add([pscustomobject]@{ name = $service.Name; pid = $process.Id; marker = $jar.FullName })
+        Save-ProcessRecords $processRecords
     }
 
     $viteScript = Join-Path $webRoot 'node_modules\vite\bin\vite.js'
     $webProcess = Start-Process -FilePath 'node.exe' -ArgumentList @($viteScript, '--host', '127.0.0.1') -WorkingDirectory $webRoot -RedirectStandardOutput (Join-Path $logRoot 'web.out.log') -RedirectStandardError (Join-Path $logRoot 'web.err.log') -WindowStyle Hidden -PassThru
-    $processRecords.Add([pscustomobject]@{ name = 'corp-deposit-rag-web'; pid = $webProcess.Id })
-    $processRecords | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $runtimeRoot 'pids.json') -Encoding UTF8
+    $processRecords.Add([pscustomobject]@{ name = 'corp-deposit-rag-web'; pid = $webProcess.Id; marker = $viteScript })
+    Save-ProcessRecords $processRecords
 
-    foreach ($service in $services) { Wait-TcpPort $service.Name $service.Port }
-    Wait-TcpPort 'corp-deposit-rag-web' 5173
+    foreach ($service in $services) {
+        $record = $processRecords | Where-Object { $_.name -eq $service.Name } | Select-Object -First 1
+        Wait-TcpPort $service.Name $service.Port $record.pid
+    }
+    Wait-TcpPort 'corp-deposit-rag-web' 5173 $webProcess.Id
     # Keep this payload ASCII-only for compatibility with Windows PowerShell 5 body encoding.
     $smokeJson = '{"customerNo":"CUST001","message":"8000000"}'
     $response = Invoke-RestMethod -Method Post -Uri 'http://127.0.0.1:5173/api/v1/assistant/plans' -ContentType 'application/json' -Body $smokeJson
     if ($null -eq $response.plans) { throw 'End-to-end recommendation smoke test returned no plans field.' }
 } catch {
-    if (Test-Path -LiteralPath (Join-Path $runtimeRoot 'pids.json')) { & $stopScript -ProjectRoot $root -Quiet }
+    if (Test-Path -LiteralPath $pidFile) { & $stopScript -ProjectRoot $root -Quiet }
     throw
 }
 

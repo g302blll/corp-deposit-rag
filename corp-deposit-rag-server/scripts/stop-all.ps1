@@ -7,24 +7,34 @@ $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path -LiteralPath $ProjectRoot).Path.TrimEnd('\')
 $pidFile = Join-Path $root '.runtime\pids.json'
 
-# java.exe may be a Windows launcher that creates a second JVM. Discover every Java/Node
-# process whose normalized command line contains this exact project root, including children.
-$ownedProcesses = @(Get-CimInstance Win32_Process | Where-Object {
-    $_.Name -in @('java.exe', 'node.exe') -and
-    -not [string]::IsNullOrWhiteSpace($_.CommandLine) -and
-    $_.CommandLine.Replace('\\', '\').IndexOf($root, [StringComparison]::OrdinalIgnoreCase) -ge 0
-})
-
-if ($ownedProcesses.Count -eq 0) {
-    if (Test-Path -LiteralPath $pidFile) { Remove-Item -LiteralPath $pidFile -Force }
-    if (-not $Quiet) { Write-Host 'No project processes are running.' -ForegroundColor Yellow }
+if (-not (Test-Path -LiteralPath $pidFile)) {
+    if (-not $Quiet) { Write-Host 'No tracked project processes are running.' -ForegroundColor Yellow }
     exit 0
 }
 
-foreach ($process in $ownedProcesses) {
-    Stop-Process -Id $process.ProcessId -Force -ErrorAction SilentlyContinue
-    if (-not $Quiet) { Write-Host "Stopped $($process.Name) (PID $($process.ProcessId))." }
+$decodedRecords = Get-Content -LiteralPath $pidFile -Raw | ConvertFrom-Json
+$records = @()
+# Windows PowerShell 5 keeps a JSON array as one pipeline object; foreach reliably expands it.
+foreach ($decodedRecord in $decodedRecords) { $records += $decodedRecord }
+$remainingRecords = @()
+foreach ($record in $records) {
+    $process = Get-CimInstance Win32_Process -Filter "ProcessId = $($record.pid)" -ErrorAction SilentlyContinue
+    if ($null -eq $process) { continue }
+    $normalizedCommand = $process.CommandLine.Replace('\\', '\')
+    $normalizedMarker = ([string]$record.marker).Replace('\\', '\')
+    if ([string]::IsNullOrWhiteSpace($normalizedMarker) -or
+        $normalizedCommand.IndexOf($normalizedMarker, [StringComparison]::OrdinalIgnoreCase) -lt 0) {
+        Write-Warning "Skipped PID $($record.pid): its command line does not match the recorded executable target."
+        $remainingRecords += $record
+        continue
+    }
+    Stop-Process -Id $record.pid -Force -ErrorAction SilentlyContinue
+    if (-not $Quiet) { Write-Host "Stopped $($record.name) (PID $($record.pid))." }
 }
 
-if (Test-Path -LiteralPath $pidFile) { Remove-Item -LiteralPath $pidFile -Force }
+if ($remainingRecords.Count -gt 0) {
+    $remainingRecords | ConvertTo-Json | Set-Content -LiteralPath $pidFile -Encoding UTF8
+    throw 'Some tracked processes were not stopped because ownership verification failed.'
+}
+Remove-Item -LiteralPath $pidFile -Force
 if (-not $Quiet) { Write-Host 'Project services stopped.' -ForegroundColor Green }

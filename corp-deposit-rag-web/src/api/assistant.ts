@@ -32,7 +32,9 @@ export function adaptPlanResponse(raw: BackendPlanResponse): PlanResponse {
   const plans: DepositPlan[] = raw.plans.map((plan, index) => ({
     planId: `plan-${plan.productId}-${plan.productTermId}`,
     planName: `方案${String.fromCharCode(65 + index)}｜${plan.productName}`,
-    planType: raw.requirement.liquidityPreference === 'HIGH' ? 'LIQUIDITY' : 'YIELD',
+    planType: raw.requirement.liquidityPreference === 'HIGH'
+      ? 'LIQUIDITY'
+      : raw.requirement.liquidityPreference === 'LOW' ? 'YIELD' : 'BALANCED',
     description: `${plan.termName}存款方案`,
     totalAmountInCents: plan.principalInCents,
     totalExpectedInterestInCents: plan.expectedInterestInCents,
@@ -58,13 +60,11 @@ export function adaptPlanResponse(raw: BackendPlanResponse): PlanResponse {
 }
 
 export async function getPlans(payload: PlanRequest): Promise<PlanResponse> {
-  const baseURL = import.meta.env.VITE_ASSISTANT_API || ''
-  const { data } = await request.post<BackendPlanResponse>('/api/v1/assistant/plans', payload, { baseURL })
+  const { data } = await request.post<BackendPlanResponse>('/api/v1/assistant/plans', payload)
   return adaptPlanResponse(data)
 }
 
 export async function createIntention(payload: CreateIntentionRequest): Promise<IntentionResult> {
-  const baseURL = import.meta.env.VITE_ASSISTANT_API || ''
-  const { data } = await request.post<IntentionResult>('/api/v1/assistant/intentions', payload, { baseURL })
+  const { data } = await request.post<IntentionResult>('/api/v1/assistant/intentions', payload)
   return data
 }

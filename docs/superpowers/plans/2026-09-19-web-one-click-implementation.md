@@ -47,4 +47,3 @@
 - [ ] Run `mvnw.cmd clean package`, `npm test`, and `npm run build` fresh.
 - [ ] Check `git diff --check` and ensure no credentials or runtime artifacts are tracked.
 - [ ] Commit, fast-forward `main`, and push GitHub.
-

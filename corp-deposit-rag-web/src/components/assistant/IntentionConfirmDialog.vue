@@ -13,6 +13,9 @@ const submitting = ref(false)
 const error = ref('')
 const idempotencyKey = ref('')
 watch(visible, value => { if (value && !idempotencyKey.value) idempotencyKey.value = createIdempotencyKey() })
+watch(() => props.plan?.planId, (current, previous) => {
+  if (current !== previous) idempotencyKey.value = visible.value ? createIdempotencyKey() : ''
+})
 
 async function submit() {
   if (!props.plan || !props.customer) return
