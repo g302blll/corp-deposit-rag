@@ -1,0 +1,35 @@
+package com.ljp.corpdeposit.business;
+
+import com.ljp.corpdeposit.core.CreateIntentionCommand;
+import com.ljp.corpdeposit.core.IntentionResult;
+import com.ljp.corpdeposit.web.BusinessException;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+public class DepositIntentionService {
+
+    private final IntentionRepository repository;
+
+    public DepositIntentionService(IntentionRepository repository) {
+        this.repository = repository;
+    }
+
+    @Transactional
+    public IntentionResult create(CreateIntentionCommand command) {
+        validate(command);
+        return repository.findByIdempotencyKey(command.idempotencyKey())
+                .orElseGet(() -> repository.create(command));
+    }
+
+    private void validate(CreateIntentionCommand command) {
+        if (command.idempotencyKey() == null || command.idempotencyKey().isBlank()) {
+            throw new BusinessException("INVALID_REQUEST", "幂等键不能为空", HttpStatus.BAD_REQUEST);
+        }
+        if (command.details() == null || command.details().isEmpty()) {
+            throw new BusinessException("INVALID_REQUEST", "办理意向至少包含一条明细", HttpStatus.BAD_REQUEST);
+        }
+    }
+}
+
