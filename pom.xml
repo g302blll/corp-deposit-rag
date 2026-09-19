@@ -13,6 +13,7 @@
         <module>common-core</module>
         <module>common-web</module>
         <module>customer-service</module>
+        <module>deposit-product-service</module>
     </modules>
 
     <properties>
