@@ -6,7 +6,7 @@
 
 当前阶段：
 
-**V1.0 Java 领域服务设计**
+**V1.1 MVP Java 可运行版本已完成**
 
 已经完成：
 
@@ -20,12 +20,15 @@
 - V0.8 四类存款业务规则
 - V0.9 MySQL DDL
 - V1.0 Java 领域服务初步设计
+- V1.1 Maven 多模块与共享领域契约
+- V1.1 客户、产品匹配/试算、办理意向、Mock AI 编排服务
+- V1.1 MySQL Flyway 初始化、Nacos 注册与端到端冒烟验证
 
 ---
 
 # 2. 当前目标
 
-下一阶段目标：
+本阶段目标已完成：
 
 > 完成第一个可以真正开始编码的 MVP Java 设计。
 
@@ -878,3 +881,43 @@ withdraw_deposit
 到期
 自动转存
 ```
+
+---
+
+# 29. V1.1 最近变更（2026-09-19）
+
+已落地 `common-core`、`common-web`、`customer-service`、`deposit-product-service`、`deposit-business-service` 和 `ai-assistant-service`。
+
+完整链路已经跑通：
+
+```text
+自然语言需求（Mock 提取）
+→ 客户及大小类查询
+→ 产品白名单准入
+→ 期限与最低起存金额
+→ 业务日有效利率
+→ Java 收益试算
+→ 多候选方案
+→ 幂等创建办理意向及明细
+```
+
+关键实现：
+
+- Mock 是默认且当前唯一启用的需求提取器，不调用付费 API。
+- 三个数据服务使用独立 Flyway 历史表，共用 `corporate_deposit_ai` 数据库但不跨服务读写业务表。
+- 本地数据库密码只通过环境变量传入，未写入 Git。
+- `mvnw.cmd clean package` 构建成功，12 个自动化测试通过。
+- 四个服务已在本地 Nacos 注册成功。
+- HTTP 冒烟验证覆盖客户查询、5 个候选方案、创建意向和幂等重试。
+
+# 30. 下一步（V1.2）
+
+优先进入模拟开户阶段：
+
+1. 实现 `DepositOpenService` 统一入口。
+2. 先实现定期存款开户处理器与 `time_deposit_certificate`。
+3. 在同一事务内写 `OPEN` 交易流水并更新意向明细状态。
+4. 增加数据库行锁/乐观锁和跨服务幂等测试。
+5. 再扩展活期、通知存款和大额存单开户。
+
+RAG、Gateway/JWT 和真实 LLM 接入继续后置，不阻塞确定性存款业务闭环。

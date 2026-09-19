@@ -4,7 +4,7 @@ spring:
   application:
     name: deposit-business-service
   datasource:
-    url: ${MYSQL_URL:jdbc:mysql://127.0.0.1:3306/corporate_deposit_ai?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false}
+    url: ${MYSQL_URL:jdbc:mysql://127.0.0.1:3306/corporate_deposit_ai?createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false}
     username: ${MYSQL_USERNAME:root}
     password: ${MYSQL_PASSWORD}
   flyway:
@@ -15,4 +15,3 @@ spring:
       discovery:
         server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
         enabled: ${NACOS_ENABLED:true}
-

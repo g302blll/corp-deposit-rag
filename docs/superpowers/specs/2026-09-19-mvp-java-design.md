@@ -2,7 +2,7 @@
 
 ## 目标
 
-交付一个可运行的 Java 17 + Spring Cloud MVP，跑通客户查询、产品准入、期限与执行利率查询、产品匹配、收益试算和办理意向创建。默认使用确定性 Mock LLM，不产生外部 API 费用；只有显式启用 `anthropic` profile 时才允许调用真实模型。
+交付一个可运行的 Java 17 + Spring Cloud MVP，跑通客户查询、产品准入、期限与执行利率查询、产品匹配、收益试算和办理意向创建。默认且当前仅使用确定性 Mock LLM，不产生外部 API 费用。
 
 ## 范围
 
@@ -23,7 +23,7 @@
 
 服务间只通过 HTTP 契约交互，不跨服务访问其他服务的数据表。当前共用一个 MySQL 实例和 `corporate_deposit_ai` 数据库，但表所有权保持清晰：客户表归 `customer-service`，产品配置表归 `deposit-product-service`，意向表归 `deposit-business-service`。
 
-`ai-assistant-service` 是编排层。它将自然语言转换为结构化需求，调用客户、产品和意向服务，并组织结果；它不直接访问金融业务表。为了使测试和本地 Demo 可重复，`mock` profile 使用固定规则提取金额、期限和流动性偏好。真实 Anthropic 客户端仅在 `anthropic` profile 下创建，并从环境变量读取密钥。
+`ai-assistant-service` 是编排层。它将自然语言转换为结构化需求，调用客户、产品和意向服务，并组织结果；它不直接访问金融业务表。为了使测试和本地 Demo 可重复，当前版本只启用固定规则提取金额、期限和流动性偏好的 Mock 实现。真实 Anthropic 客户端延后到确有需要时再增加，避免产生 API 费用。
 
 ## 模块职责
 
@@ -72,7 +72,7 @@ MVP 仅提供“预期收益试算”，不是开户结算。按 `本金 × 年�
 - 无准入产品或无有效利率：返回空候选与原因，不编造方案。
 - 下游超时或不可用：返回 `DOWNSTREAM_UNAVAILABLE`，不自动创建意向。
 - 重复幂等键：返回首次创建的意向。
-- Anthropic profile 缺少密钥：启动失败；Mock profile 不读取密钥。
+- Mock 模式不读取任何外部模型密钥，也不会发起付费 API 请求。
 
 ## 测试
 
