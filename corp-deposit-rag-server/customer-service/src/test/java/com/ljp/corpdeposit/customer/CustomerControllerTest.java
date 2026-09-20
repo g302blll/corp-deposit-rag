@@ -1,6 +1,7 @@
 package com.ljp.corpdeposit.customer;
 
 import com.ljp.corpdeposit.core.CustomerProfile;
+import com.ljp.corpdeposit.web.GlobalExceptionHandler;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -59,6 +60,49 @@ class CustomerControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].customerNo").value("CUST001"))
                 .andExpect(jsonPath("$[1].customerNo").value("CUST002"));
+    }
+
+    @Test
+    void serializesEmptyCustomerListAsArray() throws Exception {
+        CustomerProfileService service = new CustomerProfileService(new CustomerProfileRepository() {
+            @Override
+            public Optional<CustomerProfile> findByCustomerNo(String customerNo) {
+                return Optional.empty();
+            }
+
+            @Override
+            public List<CustomerProfile> findAllActive() {
+                return List.of();
+            }
+        });
+        MockMvc mvc = MockMvcBuilders.standaloneSetup(new CustomerController(service)).build();
+
+        mvc.perform(get("/api/v1/customers"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$").isEmpty());
+    }
+
+    @Test
+    void returnsCustomerNotFoundErrorCode() throws Exception {
+        CustomerProfileService service = new CustomerProfileService(new CustomerProfileRepository() {
+            @Override
+            public Optional<CustomerProfile> findByCustomerNo(String customerNo) {
+                return Optional.empty();
+            }
+
+            @Override
+            public List<CustomerProfile> findAllActive() {
+                return List.of();
+            }
+        });
+        MockMvc mvc = MockMvcBuilders.standaloneSetup(new CustomerController(service))
+                .setControllerAdvice(new GlobalExceptionHandler())
+                .build();
+
+        mvc.perform(get("/api/v1/customers/UNKNOWN"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("CUSTOMER_NOT_FOUND"));
     }
 }
 
