@@ -5,6 +5,8 @@ import com.ljp.corpdeposit.web.BusinessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 public class CustomerProfileService {
 
@@ -18,6 +20,10 @@ public class CustomerProfileService {
         return repository.findByCustomerNo(customerNo)
                 .orElseThrow(() -> new BusinessException(
                         "CUSTOMER_NOT_FOUND", "客户不存在: " + customerNo, HttpStatus.NOT_FOUND));
+    }
+
+    public List<CustomerProfile> listActive() {
+        return repository.findAllActive();
     }
 }
 
