@@ -1,5 +1,7 @@
 package com.ljp.corpdeposit.business;
 
+import java.time.LocalDateTime;
+
 public class IntentionDetailRow {
     private Long intentionId;
     private String detailNo;
@@ -9,6 +11,9 @@ public class IntentionDetailRow {
     private Long interestRate;
     private Long expectedInterest;
     private String currencyCode;
+    private Integer status;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 
     public Long getIntentionId() { return intentionId; }
     public void setIntentionId(Long intentionId) { this.intentionId = intentionId; }
@@ -26,5 +31,11 @@ public class IntentionDetailRow {
     public void setExpectedInterest(Long expectedInterest) { this.expectedInterest = expectedInterest; }
     public String getCurrencyCode() { return currencyCode; }
     public void setCurrencyCode(String currencyCode) { this.currencyCode = currencyCode; }
+    public Integer getStatus() { return status; }
+    public void setStatus(Integer status) { this.status = status; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 }
 
