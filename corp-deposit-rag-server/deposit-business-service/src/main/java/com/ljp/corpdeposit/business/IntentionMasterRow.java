@@ -1,5 +1,7 @@
 package com.ljp.corpdeposit.business;
 
+import java.time.LocalDateTime;
+
 public class IntentionMasterRow {
     private Long snId;
     private String intentionNo;
@@ -8,6 +10,9 @@ public class IntentionMasterRow {
     private String idempotencyKey;
     private String requirementText;
     private Long totalAmount;
+    private Integer sourceChannel;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 
     public Long getSnId() { return snId; }
     public void setSnId(Long snId) { this.snId = snId; }
@@ -23,5 +28,11 @@ public class IntentionMasterRow {
     public void setRequirementText(String requirementText) { this.requirementText = requirementText; }
     public Long getTotalAmount() { return totalAmount; }
     public void setTotalAmount(Long totalAmount) { this.totalAmount = totalAmount; }
+    public Integer getSourceChannel() { return sourceChannel; }
+    public void setSourceChannel(Integer sourceChannel) { this.sourceChannel = sourceChannel; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 }
 

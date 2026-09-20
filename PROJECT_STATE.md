@@ -938,3 +938,49 @@ RAG、Gateway/JWT 和真实 LLM 接入继续后置，不阻塞确定性存款业
 2. 实现真实 JWT 登录与 Gateway 统一入口。
 3. 继续模拟开户阶段：定期存款开户、OPEN 流水与意向状态更新。
 4. RAG 与真实付费 LLM 继续后置，默认保持 Mock。
+
+# 33. V1.3 查询接口与真实数据页面已完成（2026-09-20）
+
+后端已补齐六个只读查询接口：
+
+```text
+GET /api/v1/customers
+GET /api/v1/customers/{customerNo}
+GET /api/v1/products
+GET /api/v1/products/{productId}
+GET /api/v1/intentions?customerNo=&status=
+GET /api/v1/intentions/{intentionNo}
+```
+
+关键实现：
+
+- `customer-service` 只查询客户及大小类，过滤停用数据并按客户编号排序。
+- `deposit-product-service` 只查询启用产品及期限，保留原准入、利率和产品匹配接口。
+- `deposit-business-service` 只查询办理意向及明细，支持客户编号和状态筛选，保留原幂等创建链路。
+- 各服务继续保持数据自治，没有跨服务读取业务表。
+- 产品与期限 BIGINT 标识以 JSON 字符串返回，避免浏览器数值精度丢失；金额和利率仍为数值。
+- Mapper 关键过滤、排序和映射使用 MyBatis + H2 真实 SQL 测试覆盖，H2 仅为测试依赖。
+
+前端已完成：
+
+- 客户选择器删除 Mock，改用真实客户列表。
+- 产品列表和详情展示真实产品、期限、最低起存金额、最低留存金额及通知天数。
+- 意向列表支持客户编号和状态筛选；意向详情展示主单和产品明细。
+- 前端通过客户、产品、期限字典补全名称；补全失败时显示原始编号，不把真实意向查询判为失败。
+- Vite 增加 `/customer-api`、`/product-api`、`/business-api` 三个代理，原 `/api` 继续指向 AI 助手服务。
+- 查询 API 适配层统一把后端标识转换为字符串，不使用静默 Mock 兜底。
+
+验证结果：
+
+- 后端 `mvnw.cmd clean package` 成功，44 项测试通过。
+- 前端 18 项 Vitest 通过，TypeScript 与 Vite 生产构建成功。
+- 独立代码审查结论为 PASS，无 Blocking 问题。
+- 使用隔离端口连接本地 MySQL/Nacos 完成真实 HTTP 冒烟：2 个客户、4 个产品、产品期限、5 笔意向及意向详情均可经前端代理查询。
+- 默认继续使用 Mock 需求提取器，本阶段未调用付费 LLM API。
+
+# 34. 下一步（V1.4）
+
+1. 实现真实 JWT 登录与 Gateway 统一入口。
+2. 进入模拟开户阶段：先实现定期存款开户、`OPEN` 流水与意向明细状态更新。
+3. 增加数据库行锁/乐观锁和跨服务幂等测试。
+4. RAG 与真实付费 LLM 继续后置，默认保持 Mock。

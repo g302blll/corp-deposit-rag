@@ -11,6 +11,42 @@ import java.util.List;
 @Mapper
 public interface IntentionMapper {
 
+    @Select("""
+            <script>
+            SELECT sn_id, intention_no, customer_no, requirement_text, total_amount, status,
+                   source_channel, created_at, updated_at
+            FROM deposit_intention
+            <where>
+              <if test="customerNo != null and customerNo.trim() != ''">
+                customer_no = #{customerNo}
+              </if>
+              <if test="status != null">
+                AND status = #{status}
+              </if>
+            </where>
+            ORDER BY created_at DESC, sn_id DESC
+            </script>
+            """)
+    List<IntentionMasterRow> findAll(@Param("customerNo") String customerNo,
+                                     @Param("status") Integer status);
+
+    @Select("""
+            SELECT sn_id, intention_no, customer_no, requirement_text, total_amount, status,
+                   source_channel, created_at, updated_at
+            FROM deposit_intention
+            WHERE intention_no = #{intentionNo}
+            """)
+    IntentionMasterRow findByIntentionNo(@Param("intentionNo") String intentionNo);
+
+    @Select("""
+            SELECT detail_no, product_id, product_term_id, currency_code, amount, interest_rate,
+                   expected_interest, status, created_at, updated_at
+            FROM deposit_intention_detail
+            WHERE intention_id = #{intentionId}
+            ORDER BY sn_id
+            """)
+    List<IntentionDetailRow> findDetails(@Param("intentionId") long intentionId);
+
     @Select("SELECT sn_id, intention_no, customer_no, status, idempotency_key, requirement_text, total_amount " +
             "FROM deposit_intention WHERE idempotency_key = #{key}")
     IntentionMasterRow findByIdempotencyKey(@Param("key") String key);

@@ -34,6 +34,28 @@ public class MyBatisIntentionRepository implements IntentionRepository {
     }
 
     @Override
+    public List<IntentionSummary> findAll(String customerNo, Integer status) {
+        return mapper.findAll(customerNo, status).stream()
+                .map(this::toSummary)
+                .toList();
+    }
+
+    @Override
+    public Optional<IntentionDetailView> findByIntentionNo(String intentionNo) {
+        IntentionMasterRow master = mapper.findByIntentionNo(intentionNo);
+        if (master == null) {
+            return Optional.empty();
+        }
+        List<IntentionLineView> details = mapper.findDetails(master.getSnId()).stream()
+                .map(this::toLineView)
+                .toList();
+        return Optional.of(new IntentionDetailView(
+                master.getIntentionNo(), master.getCustomerNo(), master.getRequirementText(),
+                master.getTotalAmount(), master.getStatus(), master.getSourceChannel(),
+                master.getCreatedAt(), master.getUpdatedAt(), List.copyOf(details)));
+    }
+
+    @Override
     public IntentionResult create(CreateIntentionCommand command) {
         IntentionMasterRow master = new IntentionMasterRow();
         master.setIntentionNo(businessNo("INT"));
@@ -69,6 +91,20 @@ public class MyBatisIntentionRepository implements IntentionRepository {
     private String businessNo(String prefix) {
         String suffix = UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
         return prefix + LocalDateTime.now().format(NUMBER_TIME) + suffix;
+    }
+
+    private IntentionSummary toSummary(IntentionMasterRow row) {
+        return new IntentionSummary(
+                row.getIntentionNo(), row.getCustomerNo(), row.getRequirementText(),
+                row.getTotalAmount(), row.getStatus(), row.getSourceChannel(),
+                row.getCreatedAt(), row.getUpdatedAt());
+    }
+
+    private IntentionLineView toLineView(IntentionDetailRow row) {
+        return new IntentionLineView(
+                row.getDetailNo(), row.getProductId(), row.getProductTermId(), row.getCurrencyCode(),
+                row.getAmount(), row.getInterestRate(), row.getExpectedInterest(), row.getStatus(),
+                row.getCreatedAt(), row.getUpdatedAt());
     }
 }
 

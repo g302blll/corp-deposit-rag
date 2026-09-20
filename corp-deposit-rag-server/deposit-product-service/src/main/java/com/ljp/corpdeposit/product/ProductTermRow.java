@@ -11,6 +11,7 @@ public class ProductTermRow {
     private Integer termDays;
     private Long minOpenAmount;
     private Long minRetainAmount;
+    private Integer noticeDays;
 
     public Long getProductId() { return productId; }
     public void setProductId(Long productId) { this.productId = productId; }
@@ -32,5 +33,7 @@ public class ProductTermRow {
     public void setMinOpenAmount(Long minOpenAmount) { this.minOpenAmount = minOpenAmount; }
     public Long getMinRetainAmount() { return minRetainAmount; }
     public void setMinRetainAmount(Long minRetainAmount) { this.minRetainAmount = minRetainAmount; }
+    public Integer getNoticeDays() { return noticeDays; }
+    public void setNoticeDays(Integer noticeDays) { this.noticeDays = noticeDays; }
 }
 
