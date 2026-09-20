@@ -32,6 +32,18 @@ class DepositIntentionServiceTest {
     }
 
     @Test
+    void normalizesCustomerFilterBeforeQueryingRepository() {
+        RecordingRepository repository = new RecordingRepository();
+        DepositIntentionService service = new DepositIntentionService(repository);
+
+        service.list(" CUST001 ", 1);
+        assertThat(repository.customerNo).isEqualTo("CUST001");
+
+        service.list("   ", 1);
+        assertThat(repository.customerNo).isNull();
+    }
+
+    @Test
     void getsIntentionWithDetails() {
         IntentionLineView line = new IntentionLineView(
                 "DET001", 2L, 23L, "001", 800_000_000L, 15_000L,

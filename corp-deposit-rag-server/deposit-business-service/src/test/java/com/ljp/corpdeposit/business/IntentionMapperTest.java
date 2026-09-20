@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.Statement;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -24,7 +25,8 @@ class IntentionMapperTest {
     @BeforeEach
     void setUp() throws Exception {
         DataSource dataSource = new PooledDataSource(
-                "org.h2.Driver", "jdbc:h2:mem:intention;MODE=MySQL;DB_CLOSE_DELAY=-1", "sa", "");
+                "org.h2.Driver", "jdbc:h2:mem:intention_" + UUID.randomUUID()
+                + ";MODE=MySQL;DB_CLOSE_DELAY=-1", "sa", "");
         try (Connection connection = dataSource.getConnection(); Statement statement = connection.createStatement()) {
             statement.execute("DROP ALL OBJECTS");
             statement.execute("""
@@ -105,6 +107,20 @@ class IntentionMapperTest {
             assertThatThrownBy(() -> detail.details().add(detail.details().get(0)))
                     .isInstanceOf(UnsupportedOperationException.class);
             assertThat(repository.findByIntentionNo("UNKNOWN")).isEmpty();
+        }
+    }
+
+    @Test
+    void returnsImmutableEmptyDetailsForMasterWithoutLines() {
+        try (SqlSession session = sessionFactory.openSession()) {
+            MyBatisIntentionRepository repository = new MyBatisIntentionRepository(
+                    session.getMapper(IntentionMapper.class));
+
+            IntentionDetailView detail = repository.findByIntentionNo("INT002").orElseThrow();
+
+            assertThat(detail.details()).isEmpty();
+            assertThatThrownBy(() -> detail.details().add(null))
+                    .isInstanceOf(UnsupportedOperationException.class);
         }
     }
 }

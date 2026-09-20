@@ -27,7 +27,11 @@ public class DepositIntentionService {
 
     @Transactional(readOnly = true)
     public List<IntentionSummary> list(String customerNo, Integer status) {
-        return repository.findAll(customerNo, status);
+        String normalizedCustomerNo = customerNo == null ? null : customerNo.strip();
+        if (normalizedCustomerNo != null && normalizedCustomerNo.isEmpty()) {
+            normalizedCustomerNo = null;
+        }
+        return repository.findAll(normalizedCustomerNo, status);
     }
 
     @Transactional(readOnly = true)

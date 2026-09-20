@@ -61,6 +61,41 @@ class DepositIntentionControllerTest {
     }
 
     @Test
+    void serializesLargeProductIdsAsExactStringsWhileKeepingAmountsAndRatesNumeric() throws Exception {
+        long unsafeJavaScriptInteger = 9_007_199_254_740_993L;
+        LocalDateTime timestamp = LocalDateTime.of(2026, 9, 20, 9, 0);
+        IntentionLineView line = new IntentionLineView(
+                "DET001", unsafeJavaScriptInteger, unsafeJavaScriptInteger, "001",
+                800_000_000L, 15_000L, 12_000_000L, 0, timestamp, timestamp);
+        RecordingRepository repository = new RecordingRepository(new IntentionDetailView(
+                "INT001", "CUST001", "800万存一年", 800_000_000L, 1, 1,
+                timestamp, timestamp, List.of(line)));
+
+        mvc(repository).perform(get("/api/v1/intentions/INT001"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.details[0].productId").isString())
+                .andExpect(jsonPath("$.details[0].productId").value("9007199254740993"))
+                .andExpect(jsonPath("$.details[0].productTermId").isString())
+                .andExpect(jsonPath("$.details[0].productTermId").value("9007199254740993"))
+                .andExpect(jsonPath("$.details[0].amountInCents").isNumber())
+                .andExpect(jsonPath("$.details[0].interestRate").isNumber())
+                .andExpect(jsonPath("$.details[0].expectedInterestInCents").isNumber());
+    }
+
+    @Test
+    void returnsEmptyDetailsArray() throws Exception {
+        LocalDateTime timestamp = LocalDateTime.of(2026, 9, 20, 9, 0);
+        RecordingRepository repository = new RecordingRepository(new IntentionDetailView(
+                "INT001", "CUST001", "无需拆分", 100L, 1, 1,
+                timestamp, timestamp, List.of()));
+
+        mvc(repository).perform(get("/api/v1/intentions/INT001"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.details").isArray())
+                .andExpect(jsonPath("$.details").isEmpty());
+    }
+
+    @Test
     void returnsBusinessErrorForUnknownIntention() throws Exception {
         MockMvc mvc = mvc(repository());
 
